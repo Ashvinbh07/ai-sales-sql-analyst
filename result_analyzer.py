@@ -1,41 +1,114 @@
-def analyze_result(df):
+import requests
+import pandas as pd
 
-    print("\n--- Analysis ---")
 
-    # Detect Q1/Q2 revenue columns
-    if (
-        "total_revenue_q1" in df.columns
-        and "total_revenue_q2" in df.columns
-    ):
+def analyze_result(df, question):
 
-        df["revenue_change"] = (
-            df["total_revenue_q2"]
-            - df["total_revenue_q1"]
-        )
+    if df.empty:
 
-        df["percentage_change"] = (
-            df["revenue_change"]
-            / df["total_revenue_q1"]
-        ) * 100
+        return {
+            "data": df,
+            "insight": "No data was returned for this question."
+        }
 
-        # Sort by percentage decline
-        df = df.sort_values(
-            "percentage_change"
-        )
+    result_text = df.to_string(index=False)
 
-        print(df)
+    prompt = f"""
+You are a business analyst specializing in sales analytics.
 
-        largest_decline = df.iloc[0]
+USER QUESTION:
+{question}
 
-        print("\nLargest Revenue Decline:")
+QUERY RESULT:
+{result_text}
 
-        print(
-            f"{largest_decline['segment']} "
-            f"({largest_decline['percentage_change']:.2f}%)"
-        )
+TASK:
 
-        return df
+Analyze the query result and provide a concise business insight.
 
-    print("No revenue comparison found.")
+STRICT RULES:
 
-    return df
+- Answer the user's original question directly.
+- Use ONLY information present in the query result.
+- Do not invent numbers, facts, or business information.
+- Do not assume information that is not present.
+- Do not invent a currency symbol.
+- Display monetary values as plain numbers.
+- Mention important values when useful.
+- If the result contains a comparison, describe the comparison using the available values.
+- If the result contains a growth or decline percentage column, you may mention that percentage.
+- If the result DOES NOT contain a growth or decline percentage column, DO NOT calculate or invent a percentage.
+- Do not calculate new percentages from raw values.
+- Do not calculate new metrics that are not present in the query result.
+- For time-series results, describe the visible trend using the available values.
+- Identify the most important finding.
+- Keep the insight concise.
+- Use simple business language.
+- Do not provide SQL.
+- Do not explain your reasoning.
+- Return only the final business insight.
+"""
+
+    response = requests.post(
+        "http://localhost:11434/api/generate",
+        json={
+            "model": "qwen2.5-coder:7b",
+            "prompt": prompt,
+            "stream": False,
+            "options": {
+                "temperature": 0
+            }
+        }
+    )
+
+    response.raise_for_status()
+
+    insight = response.json()["response"].strip()
+
+    # Remove currency symbols because this project
+    # does not specify a currency.
+    insight = (
+        insight
+        .replace("$", "")
+        .replace("₹", "")
+        .replace("€", "")
+        .replace("£", "")
+    )
+
+    return {
+        "data": df,
+        "insight": insight
+    }
+
+
+if __name__ == "__main__":
+
+    test_data = pd.DataFrame({
+        "category": [
+            "Furniture",
+            "Electronics",
+            "Books",
+            "Clothing",
+            "Home"
+        ],
+        "total_revenue": [
+            8636868.26,
+            7375911.73,
+            7140756.55,
+            4379188.44,
+            2935717.02
+        ]
+    })
+
+    question = (
+        "Which product categories generated "
+        "the highest revenue?"
+    )
+
+    result = analyze_result(
+        test_data,
+        question
+    )
+
+    print("\nBusiness Insight:")
+    print(result["insight"])

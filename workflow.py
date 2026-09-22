@@ -6,8 +6,10 @@ from result_analyzer import analyze_result
 
 
 def clean_sql(sql):
+
     sql = sql.replace("```sql", "")
     sql = sql.replace("```", "")
+
     return sql.strip()
 
 
@@ -16,6 +18,7 @@ def run_workflow(question):
     print("\nGenerating SQL...")
 
     sql = generate_sql(question)
+
     sql = clean_sql(sql)
 
     print("\nGenerated SQL:")
@@ -26,7 +29,12 @@ def run_workflow(question):
     valid, message = validate_sql(sql)
 
     if not valid:
-        print("Validation failed:", message)
+
+        print(
+            "Validation failed:",
+            message
+        )
+
         return
 
     print("SQL is valid.")
@@ -35,13 +43,14 @@ def run_workflow(question):
 
     result = execute_sql(sql)
 
-    # Automatic SQL correction
     if not result["success"]:
 
         print("\nSQL Error:")
         print(result["error"])
 
-        print("\nAttempting automatic SQL correction...")
+        print(
+            "\nAttempting automatic SQL correction..."
+        )
 
         corrected_sql = correct_sql(
             sql,
@@ -49,33 +58,56 @@ def run_workflow(question):
             question
         )
 
-        corrected_sql = clean_sql(corrected_sql)
+        corrected_sql = clean_sql(
+            corrected_sql
+        )
 
         print("\nCorrected SQL:")
         print(corrected_sql)
 
-        print("\nValidating corrected SQL...")
+        print(
+            "\nValidating corrected SQL..."
+        )
 
-        valid, message = validate_sql(corrected_sql)
+        valid, message = validate_sql(
+            corrected_sql
+        )
 
         if not valid:
-            print("Corrected SQL validation failed:", message)
+
+            print(
+                "Corrected SQL validation failed:",
+                message
+            )
+
             return
 
-        print("Corrected SQL is valid.")
+        print(
+            "Corrected SQL is valid."
+        )
 
-        print("\nExecuting corrected SQL...")
+        print(
+            "\nExecuting corrected SQL..."
+        )
 
-        result = execute_sql(corrected_sql)
+        result = execute_sql(
+            corrected_sql
+        )
 
         if not result["success"]:
-            print("\nCorrected SQL still failed:")
-            print(result["error"])
+
+            print(
+                "\nCorrected SQL still failed:"
+            )
+
+            print(
+                result["error"]
+            )
+
             return
 
         sql = corrected_sql
 
-    # Analyze result
     print("\nResult:")
 
     df = result["data"]
@@ -84,11 +116,24 @@ def run_workflow(question):
 
     print("\nAnalyzing result...")
 
-    analyze_result(df)
+    analysis = analyze_result(
+        df,
+        question
+    )
+
+    print("\nBusiness Insight:")
+
+    print(
+        analysis["insight"]
+    )
 
 
 if __name__ == "__main__":
 
-    question = input("\nAsk a business question: ")
+    question = input(
+        "\nAsk a business question: "
+    )
 
-    run_workflow(question)
+    run_workflow(
+        question
+    )
