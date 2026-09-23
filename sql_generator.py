@@ -44,6 +44,14 @@ Before returning SQL, internally verify:
 6. Required date filters are included only when requested.
 7. Required comparisons are included.
 8. No columns or tables have been invented.
+
+OUTPUT COLUMNS:
+
+- Select only the columns necessary to answer the question.
+- Do not add supporting metrics that the user did not request.
+- If the question asks for a trend, return the time dimension and requested metric only.
+- "Monthly revenue trend" means month + revenue only.
+- Do not calculate previous revenue or revenue growth unless explicitly requested.
 """
 
     response = requests.post(

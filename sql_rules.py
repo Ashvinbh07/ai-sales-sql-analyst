@@ -76,4 +76,16 @@ GENERAL RULES:
 - Match the requested aggregation level.
 - Use correct foreign-key relationships.
 - Only generate SELECT or WITH queries.
+
+OUTPUT COLUMN RULES:
+
+- Return ONLY the dimensions and metrics required to answer the user's question.
+- NEVER add extra metrics just because they are available in the database.
+- NEVER add previous period values unless the user explicitly asks for a comparison with the previous period.
+- NEVER add growth or percentage columns unless the user explicitly asks for growth, change, increase, decrease, or percentage change.
+- For "monthly revenue trend", return ONLY:
+  month and total revenue.
+- For "yearly revenue trend", return ONLY:
+  year and total revenue.
+- A trend question does NOT automatically require growth calculations.
 """

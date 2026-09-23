@@ -77,7 +77,6 @@ def create_chart(df):
                 category
             )
 
-            # Side-by-side bars instead of stacked bars
             st.bar_chart(
                 chart_data,
                 stack=False
@@ -190,7 +189,7 @@ def create_chart(df):
             return
 
     # --------------------------------
-    # Category / Segment / City / Product
+    # Category / Segment / City / Product / Customer
     # --------------------------------
 
     categorical_columns = df.select_dtypes(
@@ -201,24 +200,40 @@ def create_chart(df):
 
         category = categorical_columns[0]
 
-        metric = numeric_columns[0]
-
-        chart_data = df[
-            [
-                category,
-                metric
+        # Ignore numeric ID columns when selecting
+        # the metric for visualization.
+        metric_columns = [
+            col
+            for col in numeric_columns
+            if not col.lower().endswith("_id")
+            and col.lower() not in [
+                "id",
+                "customer_id",
+                "product_id",
+                "order_id"
             ]
-        ].copy()
+        ]
 
-        chart_data = chart_data.set_index(
-            category
-        )
+        if metric_columns:
 
-        st.bar_chart(
-            chart_data
-        )
+            metric = metric_columns[0]
 
-        return
+            chart_data = df[
+                [
+                    category,
+                    metric
+                ]
+            ].copy()
+
+            chart_data = chart_data.set_index(
+                category
+            )
+
+            st.bar_chart(
+                chart_data
+            )
+
+            return
 
     # --------------------------------
     # No suitable chart

@@ -2,6 +2,133 @@ import requests
 import pandas as pd
 
 
+def get_verified_facts(df, question):
+
+    facts = []
+
+    if df.empty:
+        return facts
+
+    columns = list(df.columns)
+
+    # --------------------------------
+    # Find likely metric columns
+    # --------------------------------
+
+    numeric_columns = df.select_dtypes(
+        include="number"
+    ).columns.tolist()
+
+    # Ignore ID columns
+    metric_columns = [
+        col
+        for col in numeric_columns
+        if not col.lower().endswith("_id")
+        and col.lower() not in [
+            "id",
+            "customer_id",
+            "product_id",
+            "order_id"
+        ]
+    ]
+
+    if not metric_columns:
+        return facts
+
+    # Prefer revenue metric when available
+    revenue_columns = [
+        col
+        for col in metric_columns
+        if "revenue" in col.lower()
+    ]
+
+    if revenue_columns:
+        metric = revenue_columns[0]
+    else:
+        metric = metric_columns[0]
+
+    # --------------------------------
+    # Find likely dimension column
+    # --------------------------------
+
+    categorical_columns = df.select_dtypes(
+        exclude="number"
+    ).columns.tolist()
+
+    dimension = None
+
+    if categorical_columns:
+        dimension = categorical_columns[0]
+
+    # --------------------------------
+    # Time-series detection
+    # --------------------------------
+
+    time_columns = [
+        col
+        for col in columns
+        if col.lower() in [
+            "month",
+            "order_month",
+            "year",
+            "order_year"
+        ]
+    ]
+
+    if time_columns:
+        dimension = time_columns[0]
+
+    # --------------------------------
+    # Calculate verified maximum
+    # --------------------------------
+
+    if dimension:
+
+        max_row = df.loc[
+            df[metric].idxmax()
+        ]
+
+        min_row = df.loc[
+            df[metric].idxmin()
+        ]
+
+        max_value = max_row[metric]
+        min_value = min_row[metric]
+
+        max_dimension = max_row[dimension]
+        min_dimension = min_row[dimension]
+
+        facts.append(
+            f"Verified highest {metric}: "
+            f"{max_dimension} = {max_value}"
+        )
+
+        facts.append(
+            f"Verified lowest {metric}: "
+            f"{min_dimension} = {min_value}"
+        )
+
+    # --------------------------------
+    # Top row
+    # --------------------------------
+
+    sorted_df = df.sort_values(
+        by=metric,
+        ascending=False
+    )
+
+    top_row = sorted_df.iloc[0]
+
+    if dimension:
+
+        facts.append(
+            f"Verified top {dimension}: "
+            f"{top_row[dimension]} = {top_row[metric]}"
+        )
+
+    return facts
+
+
 def analyze_result(df, question):
 
     if df.empty:
@@ -13,6 +140,15 @@ def analyze_result(df, question):
 
     result_text = df.to_string(index=False)
 
+    verified_facts = get_verified_facts(
+        df,
+        question
+    )
+
+    verified_text = "\n".join(
+        verified_facts
+    )
+
     prompt = f"""
 You are a business analyst specializing in sales analytics.
 
@@ -22,30 +158,28 @@ USER QUESTION:
 QUERY RESULT:
 {result_text}
 
+VERIFIED FACTS CALCULATED DIRECTLY FROM THE QUERY RESULT:
+{verified_text}
+
 TASK:
 
-Analyze the query result and provide a concise business insight.
+Provide a concise business insight answering the user's original question.
 
-STRICT RULES:
+IMPORTANT:
 
-- Answer the user's original question directly.
-- Use ONLY information present in the query result.
-- Do not invent numbers, facts, or business information.
-- Do not assume information that is not present.
-- Do not invent a currency symbol.
-- Display monetary values as plain numbers.
-- Mention important values when useful.
-- If the result contains a comparison, describe the comparison using the available values.
-- If the result contains a growth or decline percentage column, you may mention that percentage.
-- If the result DOES NOT contain a growth or decline percentage column, DO NOT calculate or invent a percentage.
-- Do not calculate new percentages from raw values.
-- Do not calculate new metrics that are not present in the query result.
-- For time-series results, describe the visible trend using the available values.
-- Identify the most important finding.
-- Keep the insight concise.
+- Use the QUERY RESULT as the source of truth.
+- Use the VERIFIED FACTS as authoritative calculations.
+- Do not calculate maximum or minimum values yourself.
+- Do not override or contradict the VERIFIED FACTS.
+- Do not use information from a visualization.
+- Do not invent numbers.
+- Do not invent facts.
+- Do not invent percentages.
+- Do not add metrics that are not present in the query result.
+- Do not add currency symbols.
+- Use the exact values provided by the verified facts when mentioning highest or lowest values.
+- Keep the answer concise.
 - Use simple business language.
-- Do not provide SQL.
-- Do not explain your reasoning.
 - Return only the final business insight.
 """
 
@@ -65,8 +199,6 @@ STRICT RULES:
 
     insight = response.json()["response"].strip()
 
-    # Remove currency symbols because this project
-    # does not specify a currency.
     insight = (
         insight
         .replace("$", "")
@@ -84,25 +216,28 @@ STRICT RULES:
 if __name__ == "__main__":
 
     test_data = pd.DataFrame({
-        "category": [
-            "Furniture",
-            "Electronics",
-            "Books",
-            "Clothing",
-            "Home"
+        "month": [
+            1, 2, 3, 4, 5, 6,
+            7, 8, 9, 10, 11, 12
         ],
-        "total_revenue": [
-            8636868.26,
-            7375911.73,
-            7140756.55,
-            4379188.44,
-            2935717.02
+        "revenue": [
+            1301504.07,
+            1293164.07,
+            1334110.04,
+            1175761.21,
+            1379739.44,
+            1244841.65,
+            1254930.68,
+            1311546.29,
+            1338245.97,
+            1278446.78,
+            1150142.99,
+            1282526.39
         ]
     })
 
     question = (
-        "Which product categories generated "
-        "the highest revenue?"
+        "What was the monthly revenue trend in 2024?"
     )
 
     result = analyze_result(
