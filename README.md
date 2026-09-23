@@ -57,7 +57,7 @@ Streamlit Dashboard
 - SQL validation before execution
 - Automatic SQL error correction
 - PostgreSQL query execution
-- Pandas-based result analysis
+- Pandas-based result processing
 - AI-generated business insights
 - Automatic chart selection
 - Monthly and yearly trend visualizations
@@ -223,7 +223,9 @@ ai-sales-sql-analyst/
 │
 ├── requirements.txt
 ├── .gitignore
-└── README.md
+├── README.md
+└── report/
+    └── AI_Sales_SQL_Analyst_Testing_Report.pdf
 ```
 
 ## ⚙️ Installation
@@ -231,7 +233,7 @@ ai-sales-sql-analyst/
 ### 1. Clone the repository
 
 ```bash
-git clone <your-github-repository-url>
+git clone https://github.com/Ashvinbh07/ai-sales-sql-analyst.git
 cd ai-sales-sql-analyst
 ```
 
